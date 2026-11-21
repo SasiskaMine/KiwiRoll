@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Колесо Фортуны</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #1a1a2e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      text-align: center;
+      color: #e94560;
+    }
+
+    .main-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      align-items: center;
+      justify-content: center;
+      max-width: 1000px;
+      width: 100%;
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pointer {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 18px solid transparent;
+      border-right: 18px solid transparent;
+      border-top: 35px solid #e94560;
+      z-index: 10;
+      filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5));
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.7), 0 0 0 8px #16213e;
+      transition: transform 5s cubic-bezier(0.15, 0.85, 0.25, 1);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      background: #16213e;
+      padding: 25px;
+      border-radius: 12px;
+      width: 320px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+
+    label {
+      font-size: 14px;
+      color: #a2a8d3;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      background: #0f3460;
+      border: 1px solid #2a4b7c;
+      border-radius: 8px;
+      color: #fff;
+      padding: 10px;
+      font-size: 16px;
+      resize: none;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+
+    button {
+      background: #e94560;
+      color: white;
+      border: none;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #d63651;
+    }
+
+    button:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .result-box {
+      margin-top: 10px;
+      padding: 15px;
+      background: #0f3460;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 18px;
+      min-height: 55px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed #e94560;
+    }
+
+    .winner-text {
+      color: #4ecca3;
+      font-weight: bold;
+      font-size: 22px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Колесо Фортуны</h1>
+
+  <div class="main-container">
+    <div class="wheel-wrapper">
+      <div class="pointer"></div>
+      <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <div class="controls">
+      <label for="itemsInput">Варианты с новой строчки:</label>
+      <textarea id="itemsInput"><%= typeof items !== 'undefined' && items.length ? items.join('\n') : 'Павел\nКирилл\nАртем\nБорис\nДмитрий\nПолина' %></textarea>
+      
+      <button id="spinBtn">крутить</button>
+
+      <div class="result-box" id="resultBox">
+        Нажмите крутить
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spinBtn');
+    const itemsInput = document.getElementById('itemsInput');
+    const resultBox = document.getElementById('resultBox');
+
+    const colors = [
+      '#e94560', '#0f3460', '#533483', '#4ecca3', 
+      '#f9a826', '#2b2e4a', '#903749', '#3ec1d3'
+    ];
+
+    let items = [];
+    let currentRotation = 0;
+    let isSpinning = false;
+    let isFirstSpin = true;
+
+    function getItems() {
+      return itemsInput.value
+        .split('\n')
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
+    }
+
+    function drawWheel() {
+      items = getItems();
+      const numItems = items.length;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = canvas.width / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (numItems === 0) return;
+
+      const arcSize = (2 * Math.PI) / numItems;
+
+      for (let i = 0; i < numItems; i++) {
+        const angle = i * arcSize - Math.PI / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, angle, angle + arcSize);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#1a1a2e';
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(angle + arcSize / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px Segoe UI, sans-serif';
+        
+        let text = items[i];
+        if (text.length > 15) text = text.substring(0, 14) + '...';
+        
+        ctx.fillText(text, radius - 30, 8);
+        ctx.restore();
+      }
+    }
+
+    function spin() {
+      if (isSpinning) return;
+      items = getItems();
+      
+      if (items.length < 2) {
+        alert('Добавьте хотя бы 2 варианта!');
+        return;
+      }
+
+      isSpinning = true;
+      spinBtn.disabled = true;
+      itemsInput.disabled = true;
+      resultBox.innerHTML = 'Крутим...';
+
+      const numItems = items.length;
+      const sliceDeg = 360 / numItems;
+      let targetIndex = Math.floor(Math.random() * numItems);
+
+      if (isFirstSpin) {
+        const riggedIndex = items.findIndex(item => {
+          const lower = item.toLowerCase();
+          return lower === 'кирилл' || lower === 'пд';
+        });
+
+        if (riggedIndex !== -1) {
+          targetIndex = riggedIndex;
+        }
+        isFirstSpin = false;
+      }
+
+      const sectorCenter = (targetIndex * sliceDeg) + (sliceDeg / 2);
+      const stopAngle = 360 - sectorCenter;
+      const randomOffset = (Math.random() - 0.5) * (sliceDeg * 0.6);
+
+      const extraSpins = 360 * 6;
+      const currentMod = currentRotation % 360;
+      let delta = stopAngle - currentMod + randomOffset;
+      if (delta < 0) delta += 360;
+
+      currentRotation += extraSpins + delta;
+
+      canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+      setTimeout(() => {
+        isSpinning = false;
+        spinBtn.disabled = false;
+        itemsInput.disabled = false;
+        resultBox.innerHTML = `Выпало: <span class="winner-text">&nbsp;${items[targetIndex]}</span>`;
+      }, 5000);
+    }
+
+    itemsInput.addEventListener('input', () => {
+      isFirstSpin = true; 
+      drawWheel();
+    });
+
+    spinBtn.addEventListener('click', spin);
+
+    drawWheel();
+  </script>
+</body>
+</html>
